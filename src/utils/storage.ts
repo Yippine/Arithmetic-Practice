@@ -100,6 +100,11 @@ export class StorageManager {
         intermediate: { attempted: 0, correct: 0, averageTime: 0 },
         advanced: { attempted: 0, correct: 0, averageTime: 0 },
       },
+      modeRecords: {
+        practice: null,
+        timed: null,
+        custom: null,
+      },
       sessions: [],
     };
   }
@@ -109,9 +114,21 @@ export class StorageManager {
       difficulty: 'beginner',
       operations: ['addition', 'subtraction'],
       mode: 'practice',
+      timeLimit: 300, // 5 minutes default
       problemCount: 10,
       soundEnabled: true,
       showHints: true,
+      numberDisplayMode: 'decimal',
+      customModeSettings: {
+        difficulty: 'beginner',
+        numberSettings: {
+          digits: 2,
+          allowNegatives: false,
+          includeNonIntegers: false,
+        },
+        speedBonusEnabled: true,
+        streakBonusEnabled: true,
+      },
     };
   }
 }

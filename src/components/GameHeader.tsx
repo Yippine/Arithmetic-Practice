@@ -8,6 +8,7 @@ interface GameHeaderProps {
   totalProblems: number;
   timeRemaining?: number;
   isPaused: boolean;
+  currentStreak?: number;
   onPause: () => void;
   onResume: () => void;
   onHome: () => void;
@@ -19,6 +20,7 @@ export const GameHeader: React.FC<GameHeaderProps> = React.memo(({
   totalProblems,
   timeRemaining,
   isPaused,
+  currentStreak,
   onPause,
   onResume,
   onHome,
@@ -52,6 +54,15 @@ export const GameHeader: React.FC<GameHeaderProps> = React.memo(({
               <div className="text-sm text-blue-200">Score</div>
               <div className="text-2xl font-bold">{score}</div>
             </div>
+            
+            {currentStreak !== undefined && currentStreak > 0 && (
+              <div className="text-white">
+                <div className="text-sm text-blue-200">Streak</div>
+                <div className="text-xl font-bold text-yellow-400 flex items-center gap-1">
+                  🔥 {currentStreak}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="text-center text-white">
@@ -68,8 +79,9 @@ export const GameHeader: React.FC<GameHeaderProps> = React.memo(({
                   <Clock size={16} />
                   Time
                 </div>
-                <div className={`text-2xl font-bold ${
-                  timeRemaining <= 30 ? 'text-red-400' : ''
+                <div className={`text-2xl font-bold transition-colors ${
+                  timeRemaining <= 10 ? 'text-red-500 animate-pulse' : 
+                  timeRemaining <= 30 ? 'text-orange-400' : 'text-white'
                 }`}>
                   {formatTime(timeRemaining)}
                 </div>

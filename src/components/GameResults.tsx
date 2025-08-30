@@ -1,21 +1,36 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Trophy, Target, Clock, TrendingUp, Home, RotateCcw } from 'lucide-react';
-import { GameSession } from '../types';
+import { GameSession, UserStats } from '../types';
+import { AnalyticsManager } from '../utils/analytics';
 
 interface GameResultsProps {
   session: GameSession;
+  userStats: UserStats;
   onPlayAgain: () => void;
   onHome: () => void;
 }
 
 export const GameResults: React.FC<GameResultsProps> = ({
   session,
+  userStats,
   onPlayAgain,
   onHome,
 }) => {
   const completedProblems = session.problems.filter(p => p.userAnswer !== undefined);
   const correctProblems = completedProblems.filter(p => p.isCorrect);
+  
+  // Check if this is a new record
+  const currentRecord = userStats.modeRecords[session.mode];
+  const sessionTime = session.endTime && session.startTime 
+    ? (session.endTime - session.startTime) / 1000 
+    : session.averageTime * completedProblems.length;
+
+  const isNewRecord = AnalyticsManager.isNewRecord(currentRecord, {
+    score: session.score,
+    accuracy: session.accuracy,
+    totalTime: sessionTime,
+  });
   
   const getScoreColor = (accuracy: number): string => {
     if (accuracy >= 90) return 'text-green-400';
@@ -46,6 +61,26 @@ export const GameResults: React.FC<GameResultsProps> = ({
         >
           <Trophy size={64} className="mx-auto text-yellow-400 mb-4" />
           <h1 className="text-3xl font-bold mb-2">Game Complete!</h1>
+          {isNewRecord && (
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.5, type: 'spring' }}
+              className="bg-yellow-400/20 border border-yellow-400/40 rounded-lg p-3 mb-3"
+            >
+              <div className="text-yellow-300 font-bold text-lg">🏆 新記錄！</div>
+              <div className="text-yellow-200 text-sm">你在 {session.mode} 模式創下了新紀錄！</div>
+            </motion.div>
+          )}
+
+          {/* Show current record info */}
+          {currentRecord && !isNewRecord && (
+            <div className="bg-blue-400/10 border border-blue-400/20 rounded-lg p-2 mb-3">
+              <div className="text-blue-200 text-sm">
+                目前 {session.mode} 模式紀錄: {currentRecord.bestScore} 分 ({currentRecord.bestAccuracy.toFixed(1)}%)
+              </div>
+            </div>
+          )}
           <p className={`text-xl ${getScoreColor(session.accuracy)}`}>
             {getScoreMessage(session.accuracy)}
           </p>

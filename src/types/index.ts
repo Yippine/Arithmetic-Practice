@@ -4,6 +4,31 @@ export type Difficulty = 'beginner' | 'intermediate' | 'advanced';
 
 export type Mode = 'practice' | 'timed' | 'custom';
 
+export type ChallengeMode = 'speed' | 'streak' | 'accuracy';
+
+export interface CustomRange {
+  min: number;
+  max: number;
+}
+
+export interface NumberSettings {
+  digits: number; // 1-9 digits
+  allowNegatives: boolean;
+  includeNonIntegers: boolean; // Include problems with decimal/fraction answers
+}
+
+export interface CustomModeSettings {
+  difficulty: Difficulty;
+  numberSettings: NumberSettings;
+  customRanges?: {
+    operand1?: CustomRange;
+    operand2?: CustomRange;
+  };
+  challengeMode?: ChallengeMode;
+  speedBonusEnabled: boolean;
+  streakBonusEnabled: boolean;
+}
+
 export interface Problem {
   id: string;
   operand1: number;
@@ -13,6 +38,9 @@ export interface Problem {
   userAnswer?: number;
   timeSpent?: number;
   isCorrect?: boolean;
+  basePoints?: number;
+  bonusPoints?: number;
+  difficulty?: Difficulty;
 }
 
 export interface GameSession {
@@ -26,6 +54,14 @@ export interface GameSession {
   score: number;
   accuracy: number;
   averageTime: number;
+}
+
+export interface ModeRecord {
+  bestTime: number;
+  bestScore: number;
+  bestAccuracy: number;
+  sessionId: string;
+  achievedAt: number;
 }
 
 export interface UserStats {
@@ -44,8 +80,11 @@ export interface UserStats {
     correct: number;
     averageTime: number;
   }>;
+  modeRecords: Record<Mode, ModeRecord | null>;
   sessions: GameSession[];
 }
+
+export type NumberDisplayMode = 'decimal' | 'fraction';
 
 export interface GameSettings {
   difficulty: Difficulty;
@@ -55,4 +94,6 @@ export interface GameSettings {
   problemCount: number;
   soundEnabled: boolean;
   showHints: boolean;
+  numberDisplayMode: NumberDisplayMode;
+  customModeSettings?: CustomModeSettings;
 }

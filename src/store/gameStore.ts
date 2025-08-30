@@ -4,10 +4,12 @@ import { Problem, GameSession, UserStats, GameSettings } from '../types';
 import { ProblemGenerator } from '../utils/problemGenerator';
 import { StorageManager } from '../utils/storage';
 import { AnalyticsManager } from '../utils/analytics';
+import { ScoringManager } from '../utils/scoring';
 
 interface GameState {
   currentSession: GameSession | null;
   currentProblemIndex: number;
+  currentStreak: number;
   userStats: UserStats;
   gameSettings: GameSettings;
   isPlaying: boolean;
@@ -30,6 +32,7 @@ export const useGameStore = create<GameState>()(
   subscribeWithSelector((set, get) => ({
     currentSession: null,
     currentProblemIndex: 0,
+    currentStreak: 0,
     userStats: StorageManager.getUserStats(),
     gameSettings: StorageManager.getGameSettings(),
     isPlaying: false,
@@ -42,7 +45,8 @@ export const useGameStore = create<GameState>()(
       const problems = ProblemGenerator.generateProblems(
         currentSettings.operations,
         currentSettings.difficulty,
-        currentSettings.problemCount
+        currentSettings.problemCount,
+        currentSettings.mode === 'custom' ? currentSettings.customModeSettings : undefined
       );
 
       const session: GameSession = {
@@ -57,12 +61,17 @@ export const useGameStore = create<GameState>()(
         averageTime: 0,
       };
 
+      const timeRemaining = currentSettings.mode === 'timed' 
+        ? (currentSettings.timeLimit || 300) // Default to 5 minutes if no timeLimit set
+        : null;
+
       set({
         currentSession: session,
         currentProblemIndex: 0,
+        currentStreak: 0,
         isPlaying: true,
         isPaused: false,
-        timeRemaining: currentSettings.timeLimit || null,
+        timeRemaining,
         problemStartTime: Date.now(),
         gameSettings: currentSettings,
       });
@@ -83,23 +92,45 @@ export const useGameStore = create<GameState>()(
       
       const isCorrect = ProblemGenerator.validateAnswer(currentProblem, answer);
       
+      // Calculate scoring for custom mode
+      const challengeMode = state.gameSettings.mode === 'custom' 
+        ? state.gameSettings.customModeSettings?.challengeMode 
+        : undefined;
+      
+      const scoring = ScoringManager.calculateProblemScore(
+        { ...currentProblem, isCorrect, timeSpent },
+        challengeMode,
+        state.currentStreak
+      );
+      
       const updatedProblem: Problem = {
         ...currentProblem,
         userAnswer: answer,
         timeSpent,
         isCorrect,
+        basePoints: scoring.basePoints,
+        bonusPoints: scoring.bonusPoints,
       };
 
       const updatedProblems = [...state.currentSession.problems];
       updatedProblems[state.currentProblemIndex] = updatedProblem;
 
+      // Update streak
+      const newStreak = isCorrect ? state.currentStreak + 1 : 0;
+      
+      // Update session score
+      const currentScore = state.currentSession.score || 0;
+      const newScore = currentScore + scoring.totalPoints;
+
       const updatedSession: GameSession = {
         ...state.currentSession,
         problems: updatedProblems,
+        score: newScore,
       };
 
       set({
         currentSession: updatedSession,
+        currentStreak: newStreak,
         problemStartTime: Date.now(),
       });
     },
@@ -173,6 +204,7 @@ export const useGameStore = create<GameState>()(
         gameSettings: StorageManager.getGameSettings(),
         currentSession: null,
         currentProblemIndex: 0,
+        currentStreak: 0,
         isPlaying: false,
         isPaused: false,
       });

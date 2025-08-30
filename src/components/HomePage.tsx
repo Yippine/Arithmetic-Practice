@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Play, Settings, BarChart, Plus, Minus, X, Divide } from 'lucide-react';
-import { Operation, Difficulty, Mode, GameSettings } from '../types';
+import { Play, Settings, BarChart, Plus, Minus, X, Divide, Zap, Target, Trophy } from 'lucide-react';
+import { Operation, Difficulty, Mode, GameSettings, ChallengeMode } from '../types';
 
 interface HomePageProps {
   gameSettings: GameSettings;
@@ -23,13 +23,31 @@ const DIFFICULTY_CONFIG = {
   advanced: { label: 'Advanced', desc: '1-1000, decimals & negatives' },
 };
 
+const CHALLENGE_MODE_CONFIG = {
+  speed: { icon: Zap, label: 'Speed Challenge', desc: 'Bonus points for quick answers', color: 'text-yellow-400' },
+  streak: { icon: Trophy, label: 'Streak Challenge', desc: 'Maintain consecutive correct answers', color: 'text-green-400' },
+  accuracy: { icon: Target, label: 'Accuracy Challenge', desc: 'Focus on getting answers right', color: 'text-blue-400' },
+};
+
 export const HomePage: React.FC<HomePageProps> = ({
   gameSettings,
   onStartGame,
   onShowStats,
   onShowSettings,
 }) => {
-  const [localSettings, setLocalSettings] = useState<GameSettings>(gameSettings);
+  const [localSettings, setLocalSettings] = useState<GameSettings>({
+    ...gameSettings,
+    customModeSettings: gameSettings.customModeSettings || {
+      difficulty: 'beginner',
+      numberSettings: {
+        digits: 2,
+        allowNegatives: false,
+        includeNonIntegers: false,
+      },
+      speedBonusEnabled: true,
+      streakBonusEnabled: true,
+    }
+  });
 
   const toggleOperation = (operation: Operation) => {
     const newOperations = localSettings.operations.includes(operation)
@@ -39,6 +57,72 @@ export const HomePage: React.FC<HomePageProps> = ({
     if (newOperations.length > 0) {
       setLocalSettings({ ...localSettings, operations: newOperations });
     }
+  };
+
+  const setDifficultyInCustomMode = (difficulty: Difficulty) => {
+    const currentCustomSettings = localSettings.customModeSettings || {
+      difficulty: 'beginner',
+      numberSettings: {
+        digits: 2,
+        allowNegatives: false,
+        includeNonIntegers: false,
+      },
+      speedBonusEnabled: true,
+      streakBonusEnabled: true,
+    };
+    
+    setLocalSettings({
+      ...localSettings,
+      customModeSettings: {
+        ...currentCustomSettings,
+        difficulty
+      }
+    });
+  };
+
+  const updateCustomSettings = (updates: Partial<typeof localSettings.customModeSettings>) => {
+    const currentCustomSettings = localSettings.customModeSettings || {
+      difficulty: 'beginner',
+      numberSettings: {
+        digits: 2,
+        allowNegatives: false,
+        includeNonIntegers: false,
+      },
+      speedBonusEnabled: true,
+      streakBonusEnabled: true,
+    };
+
+    setLocalSettings({
+      ...localSettings,
+      customModeSettings: {
+        ...currentCustomSettings,
+        ...updates
+      }
+    });
+  };
+
+  const updateNumberSettings = (updates: Partial<NonNullable<typeof localSettings.customModeSettings>['numberSettings']>) => {
+    const currentCustomSettings = localSettings.customModeSettings || {
+      difficulty: 'beginner',
+      numberSettings: {
+        digits: 2,
+        allowNegatives: false,
+        includeNonIntegers: false,
+      },
+      speedBonusEnabled: true,
+      streakBonusEnabled: true,
+    };
+
+    setLocalSettings({
+      ...localSettings,
+      customModeSettings: {
+        ...currentCustomSettings,
+        numberSettings: {
+          ...currentCustomSettings.numberSettings,
+          ...updates
+        }
+      }
+    });
   };
 
   const handleStartGame = () => {
@@ -168,11 +252,185 @@ export const HomePage: React.FC<HomePageProps> = ({
                     className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-primary-400 focus:ring-2 focus:ring-primary-400/20"
                   >
                     <option value="practice">Practice</option>
-                    <option value="timed">Timed (5 min)</option>
+                    <option value="timed">Timed Mode</option>
                     <option value="custom">Custom</option>
                   </select>
                 </div>
               </div>
+
+              {/* Timer Settings for Timed Mode */}
+              {localSettings.mode === 'timed' && (
+                <div>
+                  <label className="block text-sm font-medium text-blue-200 mb-2">
+                    Time Limit
+                  </label>
+                  <select
+                    value={localSettings.timeLimit || 300}
+                    onChange={(e) => setLocalSettings({
+                      ...localSettings,
+                      timeLimit: parseInt(e.target.value)
+                    })}
+                    className="w-full p-3 rounded-lg bg-white/10 text-white border border-white/20 focus:border-primary-400 focus:ring-2 focus:ring-primary-400/20"
+                  >
+                    <option value={60}>1 minute</option>
+                    <option value={120}>2 minutes</option>
+                    <option value={180}>3 minutes</option>
+                    <option value={300}>5 minutes</option>
+                    <option value={600}>10 minutes</option>
+                    <option value={900}>15 minutes</option>
+                  </select>
+                </div>
+              )}
+
+
+              {localSettings.mode === 'custom' && (
+                <div className="p-4 bg-purple-500/10 border border-purple-500/20 rounded-lg space-y-4">
+                  <div className="text-white font-medium mb-3">🎯 Custom Mode Settings</div>
+                  
+                  {/* Difficulty Level */}
+                  <div>
+                    <label className="block text-sm font-medium text-purple-200 mb-2">
+                      Difficulty Level
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {(Object.keys(DIFFICULTY_CONFIG) as Difficulty[]).map((difficulty) => {
+                        const config = DIFFICULTY_CONFIG[difficulty];
+                        const isSelected = (localSettings.customModeSettings?.difficulty || 'beginner') === difficulty;
+                        
+                        return (
+                          <button
+                            key={difficulty}
+                            onClick={() => setDifficultyInCustomMode(difficulty)}
+                            className={`p-2 rounded-lg text-sm font-medium transition-colors ${
+                              isSelected
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-white/10 text-purple-200 hover:bg-white/20'
+                            }`}
+                          >
+                            {config.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Challenge Modes */}
+                  <div>
+                    <label className="block text-sm font-medium text-purple-200 mb-2">
+                      Challenge Mode (Optional)
+                    </label>
+                    <div className="grid grid-cols-1 gap-2">
+                      {(Object.keys(CHALLENGE_MODE_CONFIG) as ChallengeMode[]).map((challengeMode) => {
+                        const config = CHALLENGE_MODE_CONFIG[challengeMode];
+                        const Icon = config.icon;
+                        const isSelected = localSettings.customModeSettings?.challengeMode === challengeMode;
+                        
+                        return (
+                          <button
+                            key={challengeMode}
+                            onClick={() => updateCustomSettings({ 
+                              challengeMode: isSelected ? undefined : challengeMode 
+                            })}
+                            className={`p-3 rounded-lg transition-colors flex items-center gap-3 ${
+                              isSelected
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-white/5 text-purple-200 hover:bg-white/10'
+                            }`}
+                          >
+                            <Icon size={20} className={config.color} />
+                            <div className="text-left">
+                              <div className="font-medium">{config.label}</div>
+                              <div className="text-xs opacity-80">{config.desc}</div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Number Settings */}
+                  <div>
+                    <label className="block text-sm font-medium text-purple-200 mb-3">
+                      Number Settings
+                    </label>
+                    <div className="space-y-4">
+                      {/* Digits Selection */}
+                      <div>
+                        <div className="flex justify-between items-center mb-3">
+                          <span className="text-sm text-purple-200">Digits</span>
+                          <span className="text-sm text-purple-100 font-medium">
+                            {localSettings.customModeSettings?.numberSettings?.digits ?? 2} digits
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-9 gap-1">
+                          {[1,2,3,4,5,6,7,8,9].map((digits) => (
+                            <button
+                              key={digits}
+                              onClick={() => updateNumberSettings({ digits })}
+                              className={`p-2 rounded text-xs font-medium transition-colors ${
+                                (localSettings.customModeSettings?.numberSettings?.digits ?? 2) === digits
+                                  ? 'bg-purple-600 text-white'
+                                  : 'bg-white/10 text-purple-200 hover:bg-white/20'
+                              }`}
+                            >
+                              {digits}
+                            </button>
+                          ))}
+                        </div>
+                        <div className="text-xs text-purple-300 mt-2">
+                          Range: {(localSettings.customModeSettings?.numberSettings?.digits ?? 2) === 1 ? '1-9' : 
+                            `${Math.pow(10, (localSettings.customModeSettings?.numberSettings?.digits ?? 2) - 1)} - ${Math.pow(10, (localSettings.customModeSettings?.numberSettings?.digits ?? 2)) - 1}`}
+                        </div>
+                      </div>
+
+                      {/* Number Type Options */}
+                      <div className="grid grid-cols-1 gap-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-sm text-purple-200">Negatives</span>
+                            <div className="text-xs text-purple-300">Allow negative answers</div>
+                          </div>
+                          <button
+                            onClick={() => updateNumberSettings({ 
+                              allowNegatives: !localSettings.customModeSettings?.numberSettings?.allowNegatives 
+                            })}
+                            className={`relative inline-flex items-center h-5 rounded-full w-9 transition-colors ${
+                              localSettings.customModeSettings?.numberSettings?.allowNegatives ? 'bg-purple-600' : 'bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform ${
+                                localSettings.customModeSettings?.numberSettings?.allowNegatives ? 'translate-x-5' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <span className="text-sm text-purple-200">Non-Integers</span>
+                            <div className="text-xs text-purple-300">Include problems with decimal/fraction answers</div>
+                          </div>
+                          <button
+                            onClick={() => updateNumberSettings({ 
+                              includeNonIntegers: !localSettings.customModeSettings?.numberSettings?.includeNonIntegers 
+                            })}
+                            className={`relative inline-flex items-center h-5 rounded-full w-9 transition-colors ${
+                              localSettings.customModeSettings?.numberSettings?.includeNonIntegers ? 'bg-purple-600' : 'bg-gray-600'
+                            }`}
+                          >
+                            <span
+                              className={`inline-block w-3 h-3 transform bg-white rounded-full transition-transform ${
+                                localSettings.customModeSettings?.numberSettings?.includeNonIntegers ? 'translate-x-5' : 'translate-x-1'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <button
                 onClick={handleStartGame}

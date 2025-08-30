@@ -1,4 +1,4 @@
-import { Problem, UserStats, GameSession, Operation, Difficulty } from '../types';
+import { Problem, UserStats, GameSession, Operation, Difficulty, ModeRecord } from '../types';
 
 export class AnalyticsManager {
   static calculateSessionStats(session: GameSession): {
@@ -41,6 +41,7 @@ export class AnalyticsManager {
 
     newStats.operationStats = this.updateOperationStats(stats.operationStats, completedProblems);
     newStats.difficultyStats = this.updateDifficultyStats(stats.difficultyStats, session.difficulty, completedProblems);
+    newStats.modeRecords = this.updateModeRecords(stats.modeRecords, session, sessionStats);
 
     return newStats;
   }
@@ -107,6 +108,50 @@ export class AnalyticsManager {
     };
 
     return newStats;
+  }
+
+  private static updateModeRecords(
+    currentRecords: UserStats['modeRecords'], 
+    session: GameSession,
+    sessionStats: { score: number; accuracy: number; averageTime: number; totalTime: number }
+  ): UserStats['modeRecords'] {
+    const newRecords = { ...currentRecords };
+    const currentRecord = newRecords[session.mode];
+    
+    const sessionTime = session.endTime && session.startTime 
+      ? (session.endTime - session.startTime) / 1000 
+      : sessionStats.totalTime;
+
+    // Check if this session sets a new record
+    const isNewRecord = !currentRecord || 
+      sessionStats.score > currentRecord.bestScore ||
+      (sessionStats.score === currentRecord.bestScore && sessionStats.accuracy > currentRecord.bestAccuracy) ||
+      (sessionStats.score === currentRecord.bestScore && sessionStats.accuracy === currentRecord.bestAccuracy && sessionTime < currentRecord.bestTime);
+
+    if (isNewRecord) {
+      newRecords[session.mode] = {
+        bestTime: sessionTime,
+        bestScore: sessionStats.score,
+        bestAccuracy: sessionStats.accuracy,
+        sessionId: session.id,
+        achievedAt: Date.now(),
+      };
+    }
+
+    return newRecords;
+  }
+
+  static isNewRecord(
+    currentRecord: ModeRecord | null,
+    sessionStats: { score: number; accuracy: number; totalTime: number }
+  ): boolean {
+    if (!currentRecord) return true;
+    
+    return sessionStats.score > currentRecord.bestScore ||
+      (sessionStats.score === currentRecord.bestScore && sessionStats.accuracy > currentRecord.bestAccuracy) ||
+      (sessionStats.score === currentRecord.bestScore && 
+       sessionStats.accuracy === currentRecord.bestAccuracy && 
+       sessionStats.totalTime < currentRecord.bestTime);
   }
 
   static getPerformanceInsights(stats: UserStats): {

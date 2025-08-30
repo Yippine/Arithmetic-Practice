@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Problem, Operation } from '../types';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import { useSound } from '../hooks/useSound';
+import { ScoringManager } from '../utils/scoring';
 
 interface ProblemDisplayProps {
   problem: Problem;
@@ -66,10 +67,26 @@ export const ProblemDisplay: React.FC<ProblemDisplayProps> = React.memo(({
 
   const handleNext = () => {
     onNext();
+    // Ensure focus after next is called
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 50);
+  };
+
+  const handleKeyboardSubmit = () => {
+    if (!showResult && userInput.trim() && !isSubmitted) {
+      const answer = parseFloat(userInput);
+      if (!isNaN(answer)) {
+        setIsSubmitted(true);
+        onSubmit(answer);
+      }
+    }
   };
 
   useKeyboardShortcuts({
-    onEnter: showResult ? handleNext : undefined,
+    onEnter: showResult ? handleNext : handleKeyboardSubmit,
     onSpace: showResult ? handleNext : undefined,
   });
 
@@ -77,8 +94,21 @@ export const ProblemDisplay: React.FC<ProblemDisplayProps> = React.memo(({
     return num % 1 === 0 ? num.toString() : num.toFixed(1);
   };
 
+  const getDynamicTextSize = (): string => {
+    const maxLength = Math.max(
+      formatNumber(problem.operand1).length,
+      formatNumber(problem.operand2).length
+    );
+    
+    if (maxLength <= 2) return 'text-6xl';
+    if (maxLength <= 4) return 'text-5xl';
+    if (maxLength <= 6) return 'text-4xl';
+    if (maxLength <= 8) return 'text-3xl';
+    return 'text-2xl';
+  };
+
   return (
-    <div className={`w-full max-w-md mx-auto ${className}`}>
+    <div className={`w-full max-w-lg mx-auto ${className}`}>
       <motion.div
         key={problem.id}
         initial={{ opacity: 0, scale: 0.9 }}
@@ -87,7 +117,7 @@ export const ProblemDisplay: React.FC<ProblemDisplayProps> = React.memo(({
         className="glass-effect rounded-2xl p-8 text-center"
       >
         <div 
-          className="text-6xl font-bold text-white mb-8 space-x-4"
+          className={`${getDynamicTextSize()} font-bold text-white mb-8 space-x-4`}
           role="math"
           aria-label={`${formatNumber(problem.operand1)} ${problem.operation} ${formatNumber(problem.operand2)} equals`}
         >
@@ -142,6 +172,38 @@ export const ProblemDisplay: React.FC<ProblemDisplayProps> = React.memo(({
             >
               {isCorrect ? '✓ Correct!' : '✗ Incorrect'}
             </motion.div>
+
+            {/* Challenge mode feedback */}
+            {isCorrect && problem.timeSpent && problem.difficulty && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="space-y-1"
+              >
+                {problem.bonusPoints && problem.bonusPoints > 0 && (
+                  <div className="text-yellow-400 font-medium">
+                    ⭐ Bonus: +{problem.bonusPoints} points
+                  </div>
+                )}
+                
+                {problem.timeSpent && (
+                  <div className="text-sm text-blue-200">
+                    Time: {problem.timeSpent.toFixed(1)}s {' '}
+                    {(() => {
+                      const speedRating = ScoringManager.getSpeedRating(problem.timeSpent, problem.difficulty);
+                      const speedEmoji = {
+                        'veryfast': '🚀',
+                        'fast': '⚡',
+                        'normal': '👍',
+                        'slow': '🐌'
+                      };
+                      return speedEmoji[speedRating];
+                    })()}
+                  </div>
+                )}
+              </motion.div>
+            )}
 
             {!isCorrect && problem.userAnswer !== undefined && (
               <div className="text-lg text-blue-200">

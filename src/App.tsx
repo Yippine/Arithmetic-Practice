@@ -6,9 +6,10 @@ import { GameHeader } from './components/GameHeader';
 import { ProblemDisplay } from './components/ProblemDisplay';
 import { GameResults } from './components/GameResults';
 import { StatsPage } from './components/StatsPage';
+import { SettingsPage } from './components/SettingsPage';
 import { GameSettings } from './types';
 
-type AppScreen = 'home' | 'game' | 'results' | 'stats';
+type AppScreen = 'home' | 'game' | 'results' | 'stats' | 'settings';
 
 function App() {
   const [currentScreen, setCurrentScreen] = useState<AppScreen>('home');
@@ -17,6 +18,7 @@ function App() {
   const {
     currentSession,
     currentProblemIndex,
+    currentStreak,
     userStats,
     gameSettings,
     isPlaying,
@@ -35,6 +37,9 @@ function App() {
     loadData();
   }, [loadData]);
 
+  const currentProblem = currentSession?.problems[currentProblemIndex];
+  const isCorrect = currentProblem?.isCorrect;
+
   useEffect(() => {
     if (!isPlaying && currentSession && currentSession.endTime) {
       setCurrentScreen('results');
@@ -42,11 +47,15 @@ function App() {
   }, [isPlaying, currentSession]);
 
   useEffect(() => {
-    if (!isPlaying || isPaused || !currentSession) return;
+    if (!isPlaying || isPaused || !currentSession || timeRemaining === null) return;
 
     const interval = setInterval(() => {
-      if (timeRemaining !== null && timeRemaining > 0) {
-        const newTimeRemaining = timeRemaining - 1;
+      const { timeRemaining: currentTimeRemaining } = useGameStore.getState();
+      
+      if (currentTimeRemaining !== null && currentTimeRemaining > 0) {
+        const newTimeRemaining = currentTimeRemaining - 1;
+        useGameStore.setState({ timeRemaining: newTimeRemaining });
+        
         if (newTimeRemaining <= 0) {
           endGame();
         }
@@ -59,13 +68,14 @@ function App() {
   useEffect(() => {
     let timeout: NodeJS.Timeout;
     if (showResult) {
+      const delayTime = isCorrect ? 1000 : 2000;
       timeout = setTimeout(() => {
         setShowResult(false);
         nextProblem();
-      }, 2000);
+      }, delayTime);
     }
     return () => clearTimeout(timeout);
-  }, [showResult, nextProblem]);
+  }, [showResult, nextProblem, isCorrect]);
 
   const handleStartGame = (settings: GameSettings) => {
     startGame(settings);
@@ -100,9 +110,6 @@ function App() {
     }
   };
 
-  const currentProblem = currentSession?.problems[currentProblemIndex];
-  const isCorrect = currentProblem?.isCorrect;
-
   return (
     <div className="min-h-screen p-4 flex items-center justify-center">
       <AnimatePresence mode="wait">
@@ -118,7 +125,7 @@ function App() {
               gameSettings={gameSettings}
               onStartGame={handleStartGame}
               onShowStats={() => setCurrentScreen('stats')}
-              onShowSettings={() => {}}
+              onShowSettings={() => setCurrentScreen('settings')}
             />
           </motion.div>
         )}
@@ -137,6 +144,7 @@ function App() {
               totalProblems={currentSession.problems.length}
               timeRemaining={timeRemaining || undefined}
               isPaused={isPaused}
+              currentStreak={currentStreak}
               onPause={pauseGame}
               onResume={resumeGame}
               onHome={handleHomeNavigation}
@@ -180,6 +188,7 @@ function App() {
           >
             <GameResults
               session={currentSession}
+              userStats={userStats}
               onPlayAgain={handlePlayAgain}
               onHome={handleHomeNavigation}
             />
@@ -196,6 +205,20 @@ function App() {
           >
             <StatsPage
               stats={userStats}
+              onBack={handleHomeNavigation}
+            />
+          </motion.div>
+        )}
+
+        {currentScreen === 'settings' && (
+          <motion.div
+            key="settings"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 1.05 }}
+            className="w-full"
+          >
+            <SettingsPage
               onBack={handleHomeNavigation}
             />
           </motion.div>
